@@ -1,5 +1,8 @@
 import sqlite3
 from nutrition import calculate_nutrition
+from pathlib import Path
+from models import User
+import datetime
 
 DATABASE_NAME = "data/nutricoach.db"
 
@@ -15,8 +18,15 @@ def initialize_database():
 def create_connection():
     """Create and return a connection to the SQLite database."""
 
+    Path("data").mkdir(exist_ok=True)
+
     try:
         connection = sqlite3.connect(DATABASE_NAME)
+        connection.execute("PRAGMA foreign_keys = ON")
+
+        # Allow rows to behave like dictionaries
+        connection.row_factory = sqlite3.Row
+
         return connection
 
     except sqlite3.Error as e:
@@ -70,17 +80,17 @@ def create_tables(connection):
         FOREIGN KEY(user_id) REFERENCES users(id)
     )
     """)
+    connection.commit()
 
-def add_user(connection, name, age, gender, height, weight, activity_level, goal):
+def add_user(connection, user: User):
     """
-    Add a new user to the database.
-    Returns the newly created user's ID.
+    Add a new user.
     """
 
     cursor = connection.cursor()
 
     cursor.execute("""
-        INSERT INTO users (
+        INSERT INTO users(
             name,
             age,
             gender,
@@ -89,15 +99,15 @@ def add_user(connection, name, age, gender, height, weight, activity_level, goal
             activity_level,
             goal
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES(?,?,?,?,?,?,?)
     """, (
-        name,
-        age,
-        gender,
-        height,
-        weight,
-        activity_level,
-        goal
+        user.name,
+        user.age,
+        user.gender,
+        user.height,
+        user.weight,
+        user.activity_level,
+        user.goal
     ))
 
     connection.commit()
@@ -156,6 +166,7 @@ def delete_user(connection, user_id):
         DELETE FROM users
         WHERE id = ?
     """, (user_id,))
+    connection.commit()
 
 def add_food_log(
     connection,
@@ -203,6 +214,7 @@ def add_food_log(
         nutrition["fiber"],
         nutrition["sugar"]
     ))
+    connection.commit()
 
 def get_food_logs(connection, user_id):
     """
@@ -225,17 +237,20 @@ if __name__ == "__main__":
 
     connection = create_connection()
 
+    today = datetime.date.today().isoformat()
+
     # Create a test user
-    user_id = add_user(
-        connection,
-        "Asish",
-        21,
-        "Male",
-        173,
-        70,
-        "Moderately Active",
-        "Gain Muscle"
+    user = User(
+        name="Asish",
+        age=21,
+        gender="Male",
+        height=173,
+        weight=70,
+        activity_level="Moderately Active",
+        goal="Gain Muscle"
     )
+
+    user_id = add_user(connection, user)
 
     # Calculate nutrition
     nutrition = calculate_nutrition("egg", 2)
@@ -244,7 +259,7 @@ if __name__ == "__main__":
     add_food_log(
         connection,
         user_id,
-        "2026-07-12",
+        today,
         "Breakfast",
         "egg",
         2,
@@ -257,6 +272,7 @@ if __name__ == "__main__":
     logs = get_food_logs(connection, user_id)
 
     for log in logs:
-        print(log)
+        print(log["food_name"])
+        print(log["estimated_calories"])
 
     connection.close()

@@ -4,7 +4,12 @@ from database import (
     initialize_database,
     add_user
 )
-
+from models import User
+from constants import (
+    ACTIVITY_LEVELS,
+    GOALS,
+    GENDERS
+)
 initialize_database()
 
 st.set_page_config(
@@ -14,7 +19,9 @@ st.set_page_config(
 )
 
 st.title("🥗 NutriCoach AI")
-
+st.write(
+    "Your AI-powered nutrition and lifestyle companion."
+)
 st.subheader("Create Your Profile")
 
 name = st.text_input("Name")
@@ -28,11 +35,7 @@ age = st.number_input(
 
 gender = st.selectbox(
     "Gender",
-    [
-        "Male",
-        "Female",
-        "Other"
-    ]
+    GENDERS
 )
 
 height = st.number_input(
@@ -49,37 +52,33 @@ weight = st.number_input(
 
 activity_level = st.selectbox(
     "Activity Level",
-    [
-        "Sedentary",
-        "Lightly Active",
-        "Moderately Active",
-        "Very Active"
-    ]
+    ACTIVITY_LEVELS
 )
 
 goal = st.selectbox(
     "Goal",
-    [
-        "Lose Fat",
-        "Maintain Weight",
-        "Gain Muscle"
-    ]
+    GOALS
 )
 
-if st.button("Save Profile"):
+if st.button("💾 Save Profile", use_container_width=True):
+
+    if not name.strip():
+        st.error("Please enter your name.")
+        st.stop()
+
+    user = User(
+        name=name.strip(),
+        age=age,
+        gender=gender,
+        height=height,
+        weight=weight,
+        activity_level=activity_level,
+        goal=goal
+    )
 
     connection = create_connection()
 
-    user_id = add_user(
-        connection,
-        name,
-        age,
-        gender,
-        height,
-        weight,
-        activity_level,
-        goal
-    )
+    user_id = add_user(connection, user)
 
     connection.close()
 
