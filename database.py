@@ -62,10 +62,96 @@ def create_tables(connection):
     )
     """)
 
+def add_user(connection, name, age, gender, height, weight, activity_level, goal):
+    """
+    Add a new user to the database.
+    Returns the newly created user's ID.
+    """
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        INSERT INTO users (
+            name,
+            age,
+            gender,
+            height,
+            weight,
+            activity_level,
+            goal
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        name,
+        age,
+        gender,
+        height,
+        weight,
+        activity_level,
+        goal
+    ))
+
+    connection.commit()
+
+    return cursor.lastrowid
+
+
+def get_user(connection, user_id):
+    """
+    Retrieve a user by ID.
+    """
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM users
+        WHERE id = ?
+    """, (user_id,))
+
+    return cursor.fetchone()
+
+
+def update_user(connection, user_id, weight, activity_level, goal):
+    """
+    Update editable user fields.
+    """
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE users
+        SET
+            weight = ?,
+            activity_level = ?,
+            goal = ?
+        WHERE id = ?
+    """, (
+        weight,
+        activity_level,
+        goal,
+        user_id
+    ))
+
+    connection.commit()
+
+
+def delete_user(connection, user_id):
+    """
+    Delete a user from the database.
+    """
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM users
+        WHERE id = ?
+    """, (user_id,))
+
     connection.commit()
 
 def initialize_database():
-    """Initialize the database and create tables."""
+    """Initialize the database."""
 
     connection = create_connection()
 
@@ -74,5 +160,48 @@ def initialize_database():
         connection.close()
 
 if __name__ == "__main__":
+
     initialize_database()
-    print("Database initialized successfully!")
+
+    connection = create_connection()
+
+    print("=== ADD USER ===")
+
+    user_id = add_user(
+        connection,
+        "Asish",
+        21,
+        "Male",
+        173,
+        70,
+        "Moderately Active",
+        "Gain Muscle"
+    )
+
+    print(f"User created with ID: {user_id}")
+
+    print("\n=== GET USER ===")
+
+    user = get_user(connection, user_id)
+
+    print(user)
+
+    print("\n=== UPDATE USER ===")
+
+    update_user(
+        connection,
+        user_id,
+        72,
+        "Very Active",
+        "Maintain Weight"
+    )
+
+    print(get_user(connection, user_id))
+
+    print("\n=== DELETE USER ===")
+
+    delete_user(connection, user_id)
+
+    print(get_user(connection, user_id))
+
+    connection.close()
