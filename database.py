@@ -1,7 +1,16 @@
 import sqlite3
+from nutrition import calculate_nutrition
 
 DATABASE_NAME = "data/nutricoach.db"
 
+def initialize_database():
+    """Initialize the database."""
+
+    connection = create_connection()
+
+    if connection:
+        create_tables(connection)
+        connection.close()
 
 def create_connection():
     """Create and return a connection to the SQLite database."""
@@ -148,16 +157,67 @@ def delete_user(connection, user_id):
         WHERE id = ?
     """, (user_id,))
 
-    connection.commit()
+def add_food_log(
+    connection,
+    user_id,
+    date,
+    meal_type,
+    food_name,
+    quantity,
+    nutrition
+):
+    """
+    Add a food log entry.
+    """
 
-def initialize_database():
-    """Initialize the database."""
+    cursor = connection.cursor()
 
-    connection = create_connection()
+    cursor.execute("""
+        INSERT INTO food_logs(
+            user_id,
+            date,
+            meal_type,
+            food_name,
+            quantity,
+            estimated_calories,
+            estimated_protein,
+            estimated_carbs,
+            estimated_fat,
+            estimated_fiber,
+            estimated_sugar
+        )
 
-    if connection:
-        create_tables(connection)
-        connection.close()
+        VALUES(
+            ?,?,?,?,?,?,?,?,?,?,?
+        )
+    """,(
+        user_id,
+        date,
+        meal_type,
+        food_name,
+        quantity,
+        nutrition["calories"],
+        nutrition["protein"],
+        nutrition["carbs"],
+        nutrition["fat"],
+        nutrition["fiber"],
+        nutrition["sugar"]
+    ))
+
+def get_food_logs(connection, user_id):
+    """
+    Retrieve all food logs for a user.
+    """
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM food_logs
+        WHERE user_id = ?
+    """, (user_id,))
+
+    return cursor.fetchall()
 
 if __name__ == "__main__":
 
@@ -165,8 +225,7 @@ if __name__ == "__main__":
 
     connection = create_connection()
 
-    print("=== ADD USER ===")
-
+    # Create a test user
     user_id = add_user(
         connection,
         "Asish",
@@ -178,30 +237,26 @@ if __name__ == "__main__":
         "Gain Muscle"
     )
 
-    print(f"User created with ID: {user_id}")
+    # Calculate nutrition
+    nutrition = calculate_nutrition("egg", 2)
 
-    print("\n=== GET USER ===")
-
-    user = get_user(connection, user_id)
-
-    print(user)
-
-    print("\n=== UPDATE USER ===")
-
-    update_user(
+    # Store the meal
+    add_food_log(
         connection,
         user_id,
-        72,
-        "Very Active",
-        "Maintain Weight"
+        "2026-07-12",
+        "Breakfast",
+        "egg",
+        2,
+        nutrition
     )
 
-    print(get_user(connection, user_id))
+    # Display everything
+    print("\nFood Logs:\n")
 
-    print("\n=== DELETE USER ===")
+    logs = get_food_logs(connection, user_id)
 
-    delete_user(connection, user_id)
-
-    print(get_user(connection, user_id))
+    for log in logs:
+        print(log)
 
     connection.close()
